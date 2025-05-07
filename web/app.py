@@ -5,7 +5,6 @@ import plotly.graph_objects as go
 import pandas as pd
 import logging
 from services.stock_service import update_stock_data, get_trade_days, stock_zh_a_hist
-from models.database import load_analysis_results
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # 配置日志
@@ -16,7 +15,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 初始化Dash应用
-app = dash.Dash(__name__, 
+app = dash.Dash(__name__,
                 external_stylesheets=[dbc.themes.BOOTSTRAP],
                 suppress_callback_exceptions=True)
 server = app.server
@@ -29,7 +28,7 @@ app.layout = dbc.Container([
             html.Hr(),
         ], width=12)
     ]),
-    
+
     dbc.Row([
         dbc.Col([
             dbc.Card([
@@ -51,7 +50,7 @@ app.layout = dbc.Container([
             ], className="mb-4"),
         ], width=12)
     ]),
-    
+
     dbc.Row([
         dbc.Col([
             dbc.Card([
@@ -62,17 +61,18 @@ app.layout = dbc.Container([
             ])
         ], width=12)
     ]),
-    
+
     # 加载状态
     dcc.Loading(
         id="loading",
         type="default",
         children=html.Div(id="loading-output")
     ),
-    
+
     # 存储数据
     dcc.Store(id='stock-data-store'),
 ], fluid=True)
+
 
 @app.callback(
     [Output("stock-data-store", "data"),
@@ -81,19 +81,20 @@ app.layout = dbc.Container([
     [State("threshold", "value"),
      State("days", "value")]
 )
-def update_stock_data_callback(n_clicks, threshold, days):
+def update_stock_data_callback(n_clicks, days):
     """更新股票数据回调"""
     if n_clicks is None:
         return None, ""
-    
+
     try:
-        logger.info(f"开始分析: 阈值={threshold}%, 天数={days}")
-        result_stocks = update_stock_data(threshold, days)
+        logger.info(f"开始分析: 天数={days}")
+        result_stocks = update_stock_data(days)
         return result_stocks, ""
-        
+
     except Exception as e:
         logger.error(f"分析过程中出错: {str(e)}")
         return None, f"发生错误: {str(e)}"
+
 
 @app.callback(
     Output("results-container", "children"),
@@ -103,7 +104,7 @@ def update_results(data):
     """更新结果显示"""
     if not data:
         return html.Div("请点击'开始分析'按钮开始分析")
-    
+
     # 按策略分组
     strategy_groups = {}
     for stock in data:
@@ -111,7 +112,7 @@ def update_results(data):
         if strategy not in strategy_groups:
             strategy_groups[strategy] = []
         strategy_groups[strategy].append(stock)
-    
+
     # 创建结果展示
     results = []
     for strategy, stocks in strategy_groups.items():
@@ -122,8 +123,9 @@ def update_results(data):
             ], style={'display': 'flex', 'flexWrap': 'wrap', 'justifyContent': 'center'})
         ])
         results.append(strategy_div)
-    
+
     return html.Div(results)
+
 
 def create_stock_card(stock):
     """创建股票信息卡片"""
@@ -133,12 +135,13 @@ def create_stock_card(stock):
             dbc.CardBody([
                 html.P(f"当前价格: {stock['current_price']:.2f}"),
                 html.P(f"当前成交量: {stock['current_volume']:,.0f}"),
-                dbc.Button('查看详情', id={'type': 'show-details', 'index': stock['code']}, 
-                          color="primary", className="mt-2")
+                dbc.Button('查看详情', id={'type': 'show-details', 'index': stock['code']},
+                           color="primary", className="mt-2")
             ])
         ], className="mb-3", style={'width': '300px', 'margin': '10px'}),
         html.Div(id={'type': 'details', 'index': stock['code']})
     ])
+
 
 @app.callback(
     Output({'type': 'details', 'index': dash.MATCH}, 'children'),
@@ -149,14 +152,14 @@ def show_stock_details(n_clicks, days):
     """显示股票详细信息"""
     if n_clicks == 0:
         return None
-        
+
     try:
         # 获取触发回调的股票代码
         ctx = dash.callback_context
         if not ctx.triggered:
             return None
         stock_code = ctx.triggered[0]['prop_id'].split('.')[0].split(':')[1].strip('{}"')
-        
+
         # 获取股票数据
         start_date, end_date = get_trade_days(days)
         hist_data = stock_zh_a_hist(
@@ -166,10 +169,10 @@ def show_stock_details(n_clicks, days):
             end_date=end_date,
             adjust="qfq"
         )
-        
+
         if hist_data.empty:
             return html.Div("无法获取股票数据")
-            
+
         # 创建K线图
         fig = go.Figure(data=[go.Candlestick(
             x=hist_data['日期'],
@@ -178,14 +181,14 @@ def show_stock_details(n_clicks, days):
             low=hist_data['最低'],
             close=hist_data['收盘']
         )])
-        
+
         fig.update_layout(
             title=f"{stock_code} K线图",
             yaxis_title="价格",
             xaxis_title="日期",
             height=400
         )
-        
+
         return html.Div([
             dcc.Graph(figure=fig),
             html.Div([
@@ -210,13 +213,14 @@ def show_stock_details(n_clicks, days):
                 ], style={'width': '100%', 'marginTop': '20px'})
             ])
         ])
-        
+
     except Exception as e:
         logger.error(f"显示股票详情时出错: {str(e)}")
         return html.Div(f"显示详情出错: {str(e)}")
+
 
 # 初始化调度器
 scheduler = BackgroundScheduler()
 # 每天早上9:30更新数据
 scheduler.add_job(update_stock_data, 'cron', hour=9, minute=30)
-scheduler.start() 
+scheduler.start()
