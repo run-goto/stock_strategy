@@ -13,6 +13,7 @@ import requests
 #     save_analysis_results, load_analysis_results
 # )
 from strategies import HighVolumeBreakoutStrategy, LongLowerShadowReboundStrategy, ThreeRisingPatternStrategy
+from strategies.high_volume import HighVolumeStrategy
 
 # 配置日志
 logging.basicConfig(
@@ -197,7 +198,8 @@ def check_stock(stock_info, days, retry):
         hist_data = hist_data.sort_values('日期')
 
         # 初始化策略
-        strategies = [HighVolumeBreakoutStrategy(), LongLowerShadowReboundStrategy(), ThreeRisingPatternStrategy()]
+        strategies = [HighVolumeBreakoutStrategy(), LongLowerShadowReboundStrategy(), ThreeRisingPatternStrategy(),
+                      HighVolumeStrategy()]
 
         for strategy in strategies:
             if strategy.check(hist_data):
@@ -223,7 +225,7 @@ def update_stock_data(days=60):
         logger.info(f"获取到 {len(stock_info)} 只股票")
 
         result_stocks = []
-        with ThreadPoolExecutor(max_workers=1) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             # 只使用code和name列
             stock_data = stock_info[['code', 'name']]
             future_to_stock = {

@@ -13,7 +13,7 @@ def main():
     """主程序入口，命令行输出策略分析结果"""
     logger.info("启动A股策略分析系统（命令行模式）")
     # 可根据需要调整参数
-    days = 30
+    days = 60
     result_stocks = update_stock_data(days)
     if not result_stocks:
         print("未找到符合条件的股票")

@@ -7,6 +7,7 @@ class LongLowerShadowReboundStrategy(BaseStrategy):
         super().__init__('长下阴线反弹')
 
     def check(self, hist_data: pd.DataFrame) -> bool:
+        return False
         if len(hist_data) < 1:
             return False
         today = hist_data.iloc[-1]
