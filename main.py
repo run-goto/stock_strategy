@@ -1,4 +1,8 @@
 import logging
+from datetime import time, datetime
+
+import pandas as pd
+
 from services.stock_service import update_stock_data
 
 # 配置日志
@@ -19,6 +23,10 @@ def main():
         print("未找到符合条件的股票")
         return
     result_stocks = sorted(result_stocks, key=lambda x: x['strategy'], reverse=True)
+    today = datetime.now().date()
+    csv_file_name = today.strftime('%Y%m%d') + ".csv"
+    df = pd.DataFrame(result_stocks)
+    df.to_csv(csv_file_name, index=False, encoding='utf-8')
     for stock in result_stocks:
         print(f"{stock['name']}, {stock['code']},{stock['strategy']}")
 
