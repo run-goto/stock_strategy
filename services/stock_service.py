@@ -1,3 +1,4 @@
+import random
 from time import sleep
 
 import akshare as ak
@@ -205,12 +206,12 @@ def check_stock(stock_info, days, retry):
             if strategy.check(hist_data):
                 logger.info(f"{name}({code}) 符合{strategy.name}条件")
                 return strategy.get_result(hist_data, code, name)
-
+        sleep(random.uniform(0.1, 1.5))
     except Exception as e:
         logger.error(f"获取 {name}({code}) 数据时出错: {str(e)}")
         if retry > 0:
             logger.info(f"重试获取 {name}({code}) 数据...")
-            sleep(0.5)
+            sleep(random.uniform(0.1, 1.5))
             return check_stock(stock_info, days, retry - 1)
         return None
     return None
@@ -225,7 +226,7 @@ def update_stock_data(days=60):
         logger.info(f"获取到 {len(stock_info)} 只股票")
 
         result_stocks = []
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
             # 只使用code和name列
             stock_data = stock_info[['code', 'name']]
             future_to_stock = {
