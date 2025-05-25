@@ -80,17 +80,7 @@ def do_stock_zh_a_hist(
     }
     headers = {
         'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-        'Connection': 'keep-alive',
-        'Referer': 'https://quote.eastmoney.com/concept/sh603777.html?from=classic',
-        'Sec-Fetch-Dest': 'image',
-        'Sec-Fetch-Mode': 'no-cors',
-        'Sec-Fetch-Site': 'same-site',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
-        'sec-ch-ua': '"Chromium";v="136", "Google Chrome";v="136", "Not.A/Brand";v="99"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"macOS"',
-        'cookie': 'qgqp_b_id=54560b99b050bd4b9ad7f8972fcd02c9; fullscreengg=1; fullscreengg2=1; st_si=51648517659758; websitepoptg_api_time=1748176616843; HAList=ty-1-603777-%u6765%u4F0A%u4EFD%2Cty-1-601127-%u8D5B%u529B%u65AF%2Cty-1-000300-%u6CAA%u6DF1300%2Cty-90-BK0438-%u98DF%u54C1%u996E%u6599; st_pvi=75124299907322; st_sp=2024-11-08%2021%3A02%3A06; st_inirUrl=https%3A%2F%2Fwww.baidu.com%2Flink; st_sn=17; st_psi=20250525211625292-113200354966-1455688409; st_asi=20250525211625292-113200354966-1455688409-web.xgnhqdy.rk-1'
+
     }
     r = requests.get(url, params=params, timeout=timeout, headers=headers)
     data_json = r.json()
