@@ -1,3 +1,4 @@
+import random
 from time import sleep
 
 import akshare as ak
@@ -12,7 +13,7 @@ import requests
 #     save_stock_list, save_stock_history, 
 #     save_analysis_results, load_analysis_results
 # )
-from strategies import HighVolumeBreakoutStrategy, LongLowerShadowReboundStrategy, ThreeRisingPatternStrategy
+from strategies import LongLowerShadowReboundStrategy, ThreeRisingPatternStrategy
 from strategies.high_volume import HighVolumeStrategy
 
 # 配置日志
@@ -78,18 +79,8 @@ def do_stock_zh_a_hist(
         "end": end_date,
     }
     headers = {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-        'Connection': 'keep-alive',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
-        'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"Windows"'
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+
     }
     r = requests.get(url, params=params, timeout=timeout, headers=headers)
     data_json = r.json()
@@ -194,19 +185,19 @@ def check_stock(stock_info, days, retry):
         hist_data = hist_data.sort_values('日期')
 
         # 初始化策略
-        strategies = [HighVolumeBreakoutStrategy(), LongLowerShadowReboundStrategy(), ThreeRisingPatternStrategy(),
+        strategies = [LongLowerShadowReboundStrategy(), ThreeRisingPatternStrategy(),
                       HighVolumeStrategy()]
 
         for strategy in strategies:
             if strategy.check(hist_data):
                 logger.info(f"{name}({code}) 符合{strategy.name}条件")
                 return strategy.get_result(hist_data, code, name)
-
+        sleep(random.uniform(0.1, 1.5))
     except Exception as e:
         logger.error(f"获取 {name}({code}) 数据时出错: {str(e)}")
         if retry > 0:
             logger.info(f"重试获取 {name}({code}) 数据...")
-            sleep(0.5)
+            sleep(random.uniform(0.1, 1.5))
             return check_stock(stock_info, days, retry - 1)
         return None
     return None
