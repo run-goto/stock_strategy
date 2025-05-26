@@ -161,13 +161,9 @@ def stock_zh_a_hist(
         else:
             exchange = 'sh'  # 默认上海交易所
 
-        df = do_stock_zh_a_hist(
-            symbol=symbol,
-            period=period,
-            start_date=start_date,
-            end_date=end_date,
-            adjust=adjust
-        )
+        symbol = f"{exchange}{symbol}"
+        df = ak.stock_zh_a_hist_tx(symbol, start_date, end_date, adjust, timeout)
+        df.columns = ["日期", "开盘", "收盘", "最高", "最低", "成交量"]
         return df
     except Exception as e:
         logger.error(f"获取股票 {symbol} 数据失败: {str(e)}")
@@ -225,7 +221,7 @@ def update_stock_data(days=60):
         logger.info(f"获取到 {len(stock_info)} 只股票")
 
         result_stocks = []
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=4) as executor:
             # 只使用code和name列
             stock_data = stock_info[['code', 'name']]
             future_to_stock = {
@@ -243,6 +239,7 @@ def update_stock_data(days=60):
 
         logger.info(f"数据更新完成，共找到 {len(result_stocks)} 只符合条件的股票")
         return result_stocks
+
 
     except Exception as e:
         logger.error(f"更新数据时出错: {str(e)}")
