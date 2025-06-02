@@ -1,3 +1,4 @@
+import asyncio
 import random
 from time import sleep
 
@@ -9,6 +10,7 @@ import logging
 
 import requests
 
+from services.fetch_wastmoney_headers import EastmoneyKlineHeadersFetcher
 # from models.database import (
 #     save_stock_list, save_stock_history, 
 #     save_analysis_results, load_analysis_results
@@ -45,6 +47,7 @@ def do_stock_zh_a_hist(
         end_date: str = "20500101",
         adjust: str = "",
         timeout: float = None,
+        headers: dict = None
 ) -> pd.DataFrame:
     """
     东方财富网-行情首页-沪深京 A 股-每日行情
@@ -77,10 +80,6 @@ def do_stock_zh_a_hist(
         "secid": f"{market_code}.{symbol}",
         "beg": start_date,
         "end": end_date,
-    }
-    headers = {
-        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-
     }
     r = requests.get(url, params=params, timeout=timeout, headers=headers)
     data_json = r.json()
@@ -132,6 +131,10 @@ def do_stock_zh_a_hist(
     return temp_df
 
 
+def get_headers_sync(url):
+    return asyncio.run(EastmoneyKlineHeadersFetcher().fetch_kline_headers(url))
+
+
 def stock_zh_a_hist(
         symbol: str = "000001",
         period: str = "daily",
@@ -151,13 +154,22 @@ def stock_zh_a_hist(
             exchange = 'bj'
         else:
             exchange = 'sh'  # 默认上海交易所
+        try:
+            stock_code = exchange + symbol
+            url = f"https://quote.eastmoney.com/{stock_code}.html"
+            headers = get_headers_sync(url)
+        except Exception as e:
+            # 可根据具体需求记录日志或做进一步处理
+            logger.error(f"Error fetching headers for {symbol}: {e}")
+            return pd.DataFrame()
 
         df = do_stock_zh_a_hist(
             symbol=symbol,
             period=period,
             start_date=start_date,
             end_date=end_date,
-            adjust=adjust
+            adjust=adjust,
+            headers=headers
         )
         return df
     except Exception as e:
@@ -196,7 +208,6 @@ def check_stock(stock_info, days, retry):
             if strategy.check(hist_data):
                 logger.info(f"{name}({code}) 符合{strategy.name}条件")
                 return strategy.get_result(hist_data, code, name)
-        sleep(random.uniform(0.1, 1.5))
     except Exception as e:
         logger.error(f"获取 {name}({code}) 数据时出错: {str(e)}")
         if retry > 0:
@@ -216,7 +227,7 @@ def update_stock_data(days=60):
         logger.info(f"获取到 {len(stock_info)} 只股票")
 
         result_stocks = []
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=5) as executor:
             # 只使用code和name列
             stock_data = stock_info[['code', 'name']]
             future_to_stock = {
@@ -238,3 +249,7 @@ def update_stock_data(days=60):
     except Exception as e:
         logger.error(f"更新数据时出错: {str(e)}")
         return None
+
+
+if __name__ == '__main__':
+    update_stock_data()
