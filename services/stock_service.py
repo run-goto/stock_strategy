@@ -1,20 +1,14 @@
-import asyncio
+import logging
 import random
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from time import sleep
 
 import akshare as ak
-from datetime import datetime, time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import pandas as pd
-import logging
 
-import requests
-
-from services.fetch_wastmoney_headers import EastmoneyKlineHeadersFetcher
-# from models.database import (
-#     save_stock_list, save_stock_history, 
-#     save_analysis_results, load_analysis_results
-# )
+from common.market_util import MarketUtil
+from services.data_souce.tencent import Tencent
 from strategies import LongLowerShadowReboundStrategy, ThreeRisingPatternStrategy
 from strategies.high_volume import HighVolumeStrategy
 
@@ -28,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def get_trade_days(n_days=30):
     """获取最近N个交易日"""
-    today = datetime.now().date()
+    today = datetime.today().date()
     trade_cal = ak.tool_trade_date_hist_sina()
     # 将trade_date转换为datetime.date类型
     trade_cal['trade_date'] = pd.to_datetime(trade_cal['trade_date']).dt.date
@@ -40,143 +34,6 @@ def get_trade_days(n_days=30):
     return start_date, end_date
 
 
-def do_stock_zh_a_hist(
-        symbol: str = "000001",
-        period: str = "daily",
-        start_date: str = "19700101",
-        end_date: str = "20500101",
-        adjust: str = "",
-        timeout: float = None,
-        headers: dict = None
-) -> pd.DataFrame:
-    """
-    东方财富网-行情首页-沪深京 A 股-每日行情
-    https://quote.eastmoney.com/concept/sh603777.html?from=classic
-    :param symbol: 股票代码
-    :type symbol: str
-    :param period: choice of {'daily', 'weekly', 'monthly'}
-    :type period: str
-    :param start_date: 开始日期
-    :type start_date: str
-    :param end_date: 结束日期
-    :type end_date: str
-    :param adjust: choice of {"qfq": "前复权", "hfq": "后复权", "": "不复权"}
-    :type adjust: str
-    :param timeout: choice of None or a positive float number
-    :type timeout: float
-    :return: 每日行情
-    :rtype: pandas.DataFrame
-    """
-    market_code = 1 if symbol.startswith("6") else 0
-    adjust_dict = {"qfq": "1", "hfq": "2", "": "0"}
-    period_dict = {"daily": "101", "weekly": "102", "monthly": "103"}
-    url = "https://push2his.eastmoney.com/api/qt/stock/kline/get"
-    params = {
-        "fields1": "f1,f2,f3,f4,f5,f6",
-        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f116",
-        "ut": "7eea3edcaed734bea9cbfc24409ed989",
-        "klt": period_dict[period],
-        "fqt": adjust_dict[adjust],
-        "secid": f"{market_code}.{symbol}",
-        "beg": start_date,
-        "end": end_date,
-    }
-    r = requests.get(url, params=params, timeout=timeout, headers=headers)
-    data_json = r.json()
-    if not (data_json["data"] and data_json["data"]["klines"]):
-        return pd.DataFrame()
-    temp_df = pd.DataFrame([item.split(",") for item in data_json["data"]["klines"]])
-    temp_df["股票代码"] = symbol
-    temp_df.columns = [
-        "日期",
-        "开盘",
-        "收盘",
-        "最高",
-        "最低",
-        "成交量",
-        "成交额",
-        "振幅",
-        "涨跌幅",
-        "涨跌额",
-        "换手率",
-        "股票代码",
-    ]
-    temp_df["日期"] = pd.to_datetime(temp_df["日期"], errors="coerce").dt.date
-    temp_df["开盘"] = pd.to_numeric(temp_df["开盘"], errors="coerce")
-    temp_df["收盘"] = pd.to_numeric(temp_df["收盘"], errors="coerce")
-    temp_df["最高"] = pd.to_numeric(temp_df["最高"], errors="coerce")
-    temp_df["最低"] = pd.to_numeric(temp_df["最低"], errors="coerce")
-    temp_df["成交量"] = pd.to_numeric(temp_df["成交量"], errors="coerce")
-    temp_df["成交额"] = pd.to_numeric(temp_df["成交额"], errors="coerce")
-    temp_df["振幅"] = pd.to_numeric(temp_df["振幅"], errors="coerce")
-    temp_df["涨跌幅"] = pd.to_numeric(temp_df["涨跌幅"], errors="coerce")
-    temp_df["涨跌额"] = pd.to_numeric(temp_df["涨跌额"], errors="coerce")
-    temp_df["换手率"] = pd.to_numeric(temp_df["换手率"], errors="coerce")
-    temp_df = temp_df[
-        [
-            "日期",
-            "股票代码",
-            "开盘",
-            "收盘",
-            "最高",
-            "最低",
-            "成交量",
-            "成交额",
-            "振幅",
-            "涨跌幅",
-            "涨跌额",
-            "换手率",
-        ]
-    ]
-    return temp_df
-
-
-def get_headers_sync(url):
-    return asyncio.run(EastmoneyKlineHeadersFetcher().fetch_kline_headers(url))
-
-
-def stock_zh_a_hist(
-        symbol: str = "000001",
-        period: str = "daily",
-        start_date: str = "19700101",
-        end_date: str = "20500101",
-        adjust: str = "",
-        timeout: float = None
-) -> pd.DataFrame:
-    """获取股票历史数据"""
-    try:
-        # 根据股票代码判断交易所
-        if symbol.startswith(('600', '601', '603', '605', '688')):
-            exchange = 'sh'
-        elif symbol.startswith(('000', '001', '002', '003', '300')):
-            exchange = 'sz'
-        elif symbol.startswith(('430', '830', '831', '832', '833', '834', '835', '836', '837', '838', '839')):
-            exchange = 'bj'
-        else:
-            exchange = 'sh'  # 默认上海交易所
-        try:
-            stock_code = exchange + symbol
-            url = f"https://quote.eastmoney.com/{stock_code}.html"
-            headers = get_headers_sync(url)
-        except Exception as e:
-            # 可根据具体需求记录日志或做进一步处理
-            logger.error(f"Error fetching headers for {symbol}: {e}")
-            return pd.DataFrame()
-
-        df = do_stock_zh_a_hist(
-            symbol=symbol,
-            period=period,
-            start_date=start_date,
-            end_date=end_date,
-            adjust=adjust,
-            headers=headers
-        )
-        return df
-    except Exception as e:
-        logger.error(f"获取股票 {symbol} 数据失败: {str(e)}")
-        return pd.DataFrame()
-
-
 def check_stock(stock_info, days, retry):
     """检查单个股票"""
     code = stock_info[0]
@@ -185,20 +42,20 @@ def check_stock(stock_info, days, retry):
     try:
         logger.info(f"正在获取 {name}({code}) 的历史数据...")
         start_date, end_date = get_trade_days(days)
-        hist_data = stock_zh_a_hist(
-            symbol=code,
-            period="daily",
-            adjust="qfq",
-            start_date=start_date,
-            end_date=end_date
-        )
-
+        market_code = MarketUtil.get_market_code(code)
+        tencent = Tencent()
+        hist_data = tencent.get_stock_data(stock_code=code,
+                                           market_code=market_code,
+                                           start_date=start_date,
+                                           end_date=end_date)
         if hist_data.empty:
-            logger.warning(f"{name}({code}) 历史数据为空，跳过")
+            logger.warning(f"{name}({code}) 历史数据为空，记录失败信息")
+            # 记录失败的股票代码到文件，以便下次启动时重新获取
+            with open('failed_stocks.txt', 'a') as f:
+                f.write(f"{code},{name},{start_date},{end_date}\n")
             raise ValueError("历史数据为空")
-
         # 确保数据按日期排序
-        hist_data = hist_data.sort_values('日期')
+        hist_data = hist_data.sort_values('date')
 
         # 初始化策略
         strategies = [LongLowerShadowReboundStrategy(), ThreeRisingPatternStrategy(),
@@ -218,7 +75,7 @@ def check_stock(stock_info, days, retry):
     return None
 
 
-def update_stock_data(days=60):
+def update_stock_data(days=60, end_date=None):
     """更新股票数据"""
     try:
         logger.info("开始更新股票数据...")
@@ -227,7 +84,7 @@ def update_stock_data(days=60):
         logger.info(f"获取到 {len(stock_info)} 只股票")
 
         result_stocks = []
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        with ThreadPoolExecutor(max_workers=50) as executor:
             # 只使用code和name列
             stock_data = stock_info[['code', 'name']]
             future_to_stock = {

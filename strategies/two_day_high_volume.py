@@ -35,7 +35,7 @@ class TwoDayHighVolumeStrategy(BaseStrategy):
 
         # 新增条件九：当日成交量 > 过去15日最大成交量
         recent_15_days = hist_data.iloc[-16:-1]  # 不包括当天
-        max_vol_recent_15 = recent_15_days['成交量'].mean()
-        if today['成交量'] <= max_vol_recent_15 * 3:
+        max_vol_recent_15 = recent_15_days['volume'].mean()
+        if today['volume'] <= max_vol_recent_15 * 3:
             return False
         return True
