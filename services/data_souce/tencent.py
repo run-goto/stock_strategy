@@ -51,7 +51,9 @@ class Tencent(DataSource):
                            end_date: str = "20500101",
                            ) -> pd.DataFrame:
 
-        temp_df = self.stock_zh_a_hist_tx(symbol=symbol, start_date=start_date, end_date=end_date)
+        temp_df = self.stock_zh_a_hist_tx(symbol=symbol,
+                                          start_date=start_date,
+                                          end_date=end_date, timeout=1)
 
         numeric_fields = {
             "date": "date",
