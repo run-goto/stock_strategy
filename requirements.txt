@@ -11,3 +11,5 @@ scikit-learn~=1.6.1
 tensorflow~=2.17.0
 requests~=2.32.3
 playwright~=1.52.0
+yaml~=0.2.5
+pyyaml~=6.0.2

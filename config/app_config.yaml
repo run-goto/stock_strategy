@@ -1,0 +1,25 @@
+# config/app_config.yaml
+
+logging:
+  level: INFO
+  format: "%(asctime)s - %(levelname)s - %(message)s"
+
+data_source:
+  provider: tencent
+  timeout: 10.0
+
+strategies:
+  HighVolumeStrategy:
+    enabled: true
+  LongLowerShadowReboundStrategy:
+    enabled: false
+  ContinuationGapStrategy:
+    enabled: true
+  ThreeRisingPatternStrategy:
+    enabled: true
+  TwoDayHighVolumeStrategy:
+    enabled: false
+
+defaults:
+  check_days: 60
+  max_workers: 50
