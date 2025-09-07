@@ -152,6 +152,6 @@ class Tencent(DataSource):
 
 if __name__ == '__main__':
     market_code = MarketUtil.get_market_code("920799")
-    df = Tencent().get_stock_data(stock_code="920799", market_code=market_code, start_date="20250601",
-                                  end_date="20250607")
+    df = Tencent().get_stock_data(stock_code="920799", market_code=market_code, start_date="20250701",
+                                  end_date="20250710")
     print(df)

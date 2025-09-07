@@ -7,6 +7,8 @@ import akshare as ak
 import pandas as pd
 
 from common.market_util import MarketUtil
+from services.batch_insert import create_connection
+from services.data_souce.tencent import Tencent
 from strategies.base_strategy import BaseStrategy
 from services.strategy_loader import load_strategies_from_config
 from config.load_app_config import load_app_config
@@ -22,7 +24,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def get_trade_days(n_days=30):
+def get_trade_days(n_days=60):
     """获取最近N个交易日"""
     today = datetime.today().date()
     trade_cal = ak.tool_trade_date_hist_sina()
@@ -128,3 +130,22 @@ def update_stock_data(start_date, end_date, target_dates):
     except Exception as e:
         logger.error(f"更新数据时出错: {str(e)}")
         return []
+
+
+if __name__ == '__main__':
+    start_date = '20250807'
+    end_date = '20250814'
+    logger.info(f"开始更新股票数据，时间范围: {start_date} ~ {end_date}")
+    stock_info = ak.stock_info_a_code_name()
+    logger.info(f"获取到 {len(stock_info)} 只股票")
+    tencent = Tencent()
+    conn = create_connection()
+    for item in stock_info[['code', 'name']].values:
+        code = item[0]
+        name = item[1]
+        market_code = MarketUtil.get_market_code(code)
+        hist_data = tencent.get_stock_data(stock_code=code, market_code=market_code, start_date=start_date,
+                                           end_date=end_date)
+
+        if hist_data.empty:
+            logger.warning(f"{name}({code}) 历史数据为空")

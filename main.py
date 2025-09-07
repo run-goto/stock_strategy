@@ -33,9 +33,11 @@ if __name__ == "__main__":
         args.start, args.end = get_trade_days(default_check_days)
 
     if not args.targets:
-        args.targets = [args.end]  # 默认只检查最后一天
+        # 获取最近30个自然日的交易日列表
+        _, end_date = get_trade_days(15)
+        args.targets = [end_date]  # 可根据需要扩展为完整交易日列表
 
-    results = update_stock_data(args.start, args.end, ['20250630'])
+    results = update_stock_data(args.start, args.end, args.targets)
 
     if results:
         for res in results:

@@ -16,8 +16,12 @@ strategies:
   ContinuationGapStrategy:
     enabled: true
   ThreeRisingPatternStrategy:
-    enabled: true
+    enabled: false
   TwoDayHighVolumeStrategy:
+    enabled: false
+  TwoDayUpStrategy:
+    enabled: true
+  BreakM100:
     enabled: false
 
 defaults:

@@ -28,7 +28,7 @@ class HighVolumeStrategy(BaseStrategy):
 
         today = hist_data.iloc[-1]
 
-        # # 条件一：当日必须上涨
+        # 条件一：当日必须上涨
         # if today['涨跌幅'] <= 0:
         #     return False
 
@@ -38,11 +38,11 @@ class HighVolumeStrategy(BaseStrategy):
         if today['volume'] <= max_vol_recent_15 * 3:
             return False
 
-        # 新增条件十：过去15-60日最大成交量 > 平均成交量 × 1.5
-        past_15_to_60_days = hist_data.iloc[0:-16]  # 包括第60天，不包括最近15天
-        avg_vol_past = past_15_to_60_days['volume'].mean()
-        max_vol_past = past_15_to_60_days['volume'].max()
-        if max_vol_past <= avg_vol_past * 3:
-            return False
+        # # 新增条件十：过去15-60日最大成交量 > 平均成交量 × 1.5
+        # past_15_to_60_days = hist_data.iloc[0:-16]  # 包括第60天，不包括最近15天
+        # avg_vol_past = past_15_to_60_days['volume'].mean()
+        # max_vol_past = past_15_to_60_days['volume'].max()
+        # if max_vol_past <= avg_vol_past * 3:
+        #     return False
 
         return True
