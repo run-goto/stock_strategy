@@ -25,5 +25,5 @@ strategies:
     enabled: false
 
 defaults:
-  check_days: 60
+  check_days: 30
   max_workers: 50
