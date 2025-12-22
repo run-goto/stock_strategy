@@ -1,7 +1,7 @@
 # file: main.py
 
 import argparse
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from services.stock_service import update_stock_data
 from config.load_app_config import load_app_config
@@ -33,10 +33,15 @@ if __name__ == "__main__":
         args.start, args.end = get_trade_days(default_check_days)
 
     if not args.targets:
-        # 获取最近30个自然日的交易日列表
-        _, end_date = get_trade_days(15)
-        args.targets = [end_date]  # 可根据需要扩展为完整交易日列表
+        # 生成最近30个自然日的日期列表（格式为 YYYYMMDD）
+        trade_days = []
+        for i in range(5):
+            date_str = (datetime.today() - timedelta(days=i)).strftime("%Y%m%d")
+            print(date_str)
+            trade_days.append(date_str)
 
+        # 去重并倒序排列（可选）
+        args.targets = sorted(set(trade_days), reverse=True)
     results = update_stock_data(args.start, args.end, args.targets)
 
     if results:
