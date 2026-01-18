@@ -1,1 +1,0 @@
-from .stock_view import create_stock_view 

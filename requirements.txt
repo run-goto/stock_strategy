@@ -1,15 +1,17 @@
+# 数据获取
 akshare>=1.10.0
+
+# 数据处理
 pandas>=1.3.0
 numpy>=1.21.0
-plotly>=5.3.0
-dash>=2.0.0
-dash-bootstrap-components>=1.0.0 
-apscheduler~=3.11.0
-matplotlib~=3.10.3
-keras~=3.6.0
-scikit-learn~=1.6.1
-tensorflow~=2.17.0
-requests~=2.32.3
-playwright~=1.52.0
-yaml~=0.2.5
-pyyaml~=6.0.2
+
+# Web API
+flask>=2.0.0
+flask-cors>=3.0.0
+
+# 定时任务
+schedule>=1.1.0
+
+# 其他
+requests>=2.28.0
+pyyaml>=6.0

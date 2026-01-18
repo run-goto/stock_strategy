@@ -18,7 +18,11 @@ logger = logging.getLogger(__name__)
 
 class Tencent(DataSource):
     def __init__(self):
-        self.name = "东方财富"
+        self.name = "腾讯证券"
+        # 从配置文件读取超时设置
+        from config.load_app_config import load_app_config
+        config = load_app_config()
+        self.timeout = config.get("data_source", {}).get("timeout", 10.0)
 
     def do_get_stock_data(self, stock_code, market_code, start_date, end_date):
         return self.stock_zh_a_hist(
@@ -53,7 +57,7 @@ class Tencent(DataSource):
 
         temp_df = self.stock_zh_a_hist_tx(symbol=symbol,
                                           start_date=start_date,
-                                          end_date=end_date, timeout=1)
+                                          end_date=end_date, timeout=self.timeout)
 
         numeric_fields = {
             "date": "date",
