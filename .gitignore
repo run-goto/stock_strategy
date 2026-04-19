@@ -139,4 +139,8 @@ venv.bak/
 
 # Project specific
 stock_data.db
-stock_data.db-journal 
+stock_data.db-journal
+stock_data.duckdb
+stock_data.duckdb.wal
+*.duckdb
+*.duckdb.wal

@@ -1,0 +1,54 @@
+# backend/config/app_config.yaml
+
+logging:
+  level: INFO
+  format: "%(asctime)s - %(levelname)s - %(message)s"
+  dir: logs
+  file: app.log
+  max_bytes: 10485760
+  backup_count: 5
+
+data_source:
+  provider: tencent
+  timeout: 10.0
+  stock_fetch_timeout: 10.0
+  daily_fetch_workers: 8
+
+storage:
+  duckdb_path: stock_data.duckdb
+
+sync_schedule:
+  poll_interval_seconds: 60
+
+strategies:
+  HighVolumeStrategy:
+    enabled: true
+  LongLowerShadowReboundStrategy:
+    enabled: false
+  ContinuationGapStrategy:
+    enabled: true
+  ThreeRisingPatternStrategy:
+    enabled: false
+  TwoDayHighVolumeStrategy:
+    enabled: false
+  TwoDayUpStrategy:
+    enabled: true
+  BreakM100:
+    enabled: false
+  # 《短线操盘实战技巧》6个核心策略
+  DualMATrendStrategy:
+    enabled: true
+  Low123BreakoutStrategy:
+    enabled: true
+  MACDDivergenceBreakoutStrategy:
+    enabled: true
+  GapBreakoutStrategy:
+    enabled: true
+  GapPullbackStrategy:
+    enabled: true
+  StrongLimitUpBreakoutStrategy:
+    enabled: true
+
+defaults:
+  check_days: 60
+  max_workers: 50
