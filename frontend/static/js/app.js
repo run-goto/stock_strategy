@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeNavigation();
     initializeSyncPage();
     initializeScanPage();
+    initializeRankingPage();
     initializeBacktestForm();
     initializeOptimizationForm();
     loadBacktestHistory();
@@ -306,6 +307,101 @@ function initializeScanPage() {
     loadScanJobs();
 }
 
+function initializeRankingPage() {
+    ensureRankingNavLink();
+    const form = document.getElementById('ranking-form');
+    if (!form) {
+        return;
+    }
+
+    setDefaultRankingDates();
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await loadHighLowGainRanking();
+    });
+}
+
+function ensureRankingNavLink() {
+    const nav = document.querySelector('.nav');
+    if (!nav || nav.querySelector('[data-page="ranking"]')) {
+        return;
+    }
+    const backtestLink = nav.querySelector('[data-page="backtest"]');
+    const rankingLink = document.createElement('a');
+    rankingLink.href = '#';
+    rankingLink.className = 'nav-link';
+    rankingLink.dataset.page = 'ranking';
+    rankingLink.textContent = '涨幅排行';
+    if (backtestLink) {
+        nav.insertBefore(rankingLink, backtestLink);
+    } else {
+        nav.appendChild(rankingLink);
+    }
+    rankingLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+        this.classList.add('active');
+        document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+        document.getElementById('ranking-page').classList.add('active');
+    });
+}
+
+function setDefaultRankingDates() {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - 60);
+    document.getElementById('ranking-start-date').value = toDateInput(start);
+    document.getElementById('ranking-end-date').value = toDateInput(end);
+    document.getElementById('ranking-limit').value = 100;
+    document.getElementById('ranking-direction-up').checked = true;
+    document.getElementById('ranking-min-gain-percent').value = 30;
+}
+
+async function loadHighLowGainRanking() {
+    const button = document.getElementById('ranking-query-btn');
+    const tbody = document.getElementById('ranking-results-tbody');
+    const start = formatDate(document.getElementById('ranking-start-date').value);
+    const end = formatDate(document.getElementById('ranking-end-date').value);
+    const limit = document.getElementById('ranking-limit').value || 100;
+    const directionInput = document.querySelector('input[name="ranking-direction"]:checked');
+    const direction = directionInput ? directionInput.value : 'up';
+    const minGainPercent = document.getElementById('ranking-min-gain-percent').value;
+    const params = new URLSearchParams({
+        start,
+        end,
+        limit,
+        direction,
+    });
+    if (minGainPercent !== '') {
+        params.set('min_gain_percent', minGainPercent);
+    }
+    setButtonLoading(button, true, '查询中...');
+    try {
+        const results = await apiFetch(`/rankings/high-low-gain?${params.toString()}`);
+        if (!results.length) {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state">暂无排行结果，请先同步该区间日线数据</td></tr>';
+            return;
+        }
+        tbody.innerHTML = results.map((item, index) => `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${escapeHtml(item.code)}</td>
+                <td>${escapeHtml(item.name)}</td>
+                <td>${escapeHtml(formatNullableNumber(item.lowest_price))}</td>
+                <td>${escapeHtml(item.lowest_date)}</td>
+                <td>${escapeHtml(formatNullableNumber(item.highest_price))}</td>
+                <td>${escapeHtml(item.highest_date)}</td>
+                <td>${escapeHtml(formatGainPercent(item.gain_percent))}</td>
+                <td>${escapeHtml(item.trade_days)}</td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        tbody.innerHTML = `<tr><td colspan="9" class="empty-state">涨幅排行查询失败: ${escapeHtml(error.message)}</td></tr>`;
+    } finally {
+        setButtonLoading(button, false, '查询排行');
+    }
+}
+
 function setDefaultScanDates() {
     const end = new Date();
     const start = new Date();
@@ -483,6 +579,14 @@ function formatNullableNumber(value) {
         return '--';
     }
     return String(value);
+}
+
+function formatGainPercent(value) {
+    const parsed = parseFloat(value);
+    if (!Number.isFinite(parsed)) {
+        return '--';
+    }
+    return `${parsed.toFixed(2)}%`;
 }
 
 function renderStatus(status) {

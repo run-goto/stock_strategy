@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.api.routes import router
 from backend.application.backtest_service import BacktestService
 from backend.application.interfaces import TaskExecutionService
+from backend.application.ranking_service import RankingService
 from backend.application.sync import DataSyncService, InProcessSyncScheduler, SyncScheduleService
 from backend.application.tasks import ResearchJobService
 from backend.infrastructure.data_sources import create_data_source
@@ -28,6 +29,7 @@ def create_app(
     unified_job_repository: DuckDBJobRepository | None = None,
     job_service: TaskExecutionService | None = None,
     sync_schedule_service: SyncScheduleService | None = None,
+    ranking_service: RankingService | None = None,
 ) -> FastAPI:
     config = app_config or load_app_config()
     configure_logging(config)
@@ -64,6 +66,7 @@ def create_app(
             schedule_repository=unified_job_repository,
             job_service=job_service,
         )
+    ranking_service = ranking_service or RankingService(repository)
     scheduler = None
     if sync_schedule_service is not None:
         schedule_config = config.get("sync_schedule", {})
@@ -94,6 +97,7 @@ def create_app(
     app.state.unified_job_repository = unified_job_repository
     app.state.job_service = job_service
     app.state.sync_schedule_service = sync_schedule_service
+    app.state.ranking_service = ranking_service
     app.state.sync_scheduler = scheduler
     app.add_middleware(
         CORSMiddleware,

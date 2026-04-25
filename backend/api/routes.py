@@ -8,6 +8,7 @@ from backend.api.schemas import (
     BacktestRequest,
     BacktestResultResponse,
     HealthResponse,
+    HighLowGainRankResponse,
     JobResponse,
     ScanCreatedResponse,
     ScanJobResponse,
@@ -21,6 +22,7 @@ from backend.api.schemas import (
     SyncScheduleUpdateRequest,
 )
 from backend.application.interfaces import TaskExecutionService
+from backend.application.ranking_service import RankingService
 from backend.application.strategy import load_strategies_from_config
 from backend.application.sync import SyncScheduleService
 
@@ -42,12 +44,20 @@ def get_sync_schedule_service(request: Request):
     return service
 
 
+def get_ranking_service(request: Request):
+    return request.app.state.ranking_service
+
+
 ConfigDep = Annotated[dict, Depends(get_config)]
 JobServiceDep = Annotated[TaskExecutionService, Depends(get_job_service)]
 SyncScheduleServiceDep = Annotated[SyncScheduleService, Depends(get_sync_schedule_service)]
+RankingServiceDep = Annotated[RankingService, Depends(get_ranking_service)]
 JobIdPath = Annotated[str, Path()]
 JobTypeQuery = Annotated[str | None, Query(alias="type")]
 JobLimitQuery = Annotated[int, Query(ge=1, le=200)]
+RankingLimitQuery = Annotated[int, Query(ge=1, le=500)]
+RankingDirectionQuery = Annotated[str | None, Query()]
+RankingMinGainPercentQuery = Annotated[float | None, Query(ge=0, le=10000, alias="min_gain_percent")]
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -65,6 +75,27 @@ def strategies():
         {"class_name": s.__class__.__name__, "name": s.name}
         for s in load_strategies_from_config()
     ]
+
+
+@router.get("/rankings/high-low-gain", response_model=list[HighLowGainRankResponse])
+def list_high_low_gain_rank(
+    ranking_service: RankingServiceDep,
+    start: Annotated[str, Query()],
+    end: Annotated[str, Query()],
+    limit: RankingLimitQuery = 100,
+    direction: RankingDirectionQuery = None,
+    min_gain_percent: RankingMinGainPercentQuery = None,
+):
+    try:
+        return ranking_service.list_high_low_gain_rank(
+            start_date=start,
+            end_date=end,
+            limit=limit,
+            direction=direction,
+            min_gain_percent=min_gain_percent,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/scans", response_model=ScanCreatedResponse, status_code=202)

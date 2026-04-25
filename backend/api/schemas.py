@@ -145,3 +145,17 @@ class BacktestResultResponse(BaseModel):
     win_rate: float
     created_at: str | None = None
 
+
+class HighLowGainRankResponse(BaseModel):
+    code: str
+    name: str
+    start: str
+    end: str
+    lowest_price: float
+    lowest_date: str
+    highest_price: float
+    highest_date: str
+    gain_rate: float
+    gain_percent: float
+    trade_days: int
+

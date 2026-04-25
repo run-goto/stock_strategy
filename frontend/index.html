@@ -468,6 +468,72 @@
                 </form>
             </div>
         </section>
+        <section id="ranking-page" class="page">
+            <div class="card">
+                <h2 class="card-title">涨幅排行</h2>
+                <form id="ranking-form" class="form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="ranking-start-date">开始日期</label>
+                            <input type="date" id="ranking-start-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ranking-end-date">结束日期</label>
+                            <input type="date" id="ranking-end-date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ranking-limit">返回数量</label>
+                            <input type="number" id="ranking-limit" value="100" min="1" max="500" required>
+                        </div>
+                        <div class="form-group">
+                            <label>方向</label>
+                            <div class="ranking-tabs" id="ranking-direction-tabs">
+                                <input type="radio" id="ranking-direction-range" name="ranking-direction" value="range">
+                                <label class="ranking-tab" for="ranking-direction-range">振幅</label>
+                                <input type="radio" id="ranking-direction-up" name="ranking-direction" value="up" checked>
+                                <label class="ranking-tab" for="ranking-direction-up">涨</label>
+                                <input type="radio" id="ranking-direction-down" name="ranking-direction" value="down">
+                                <label class="ranking-tab" for="ranking-direction-down">跌</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="ranking-min-gain-percent">最小涨跌幅(%)</label>
+                            <input type="number" id="ranking-min-gain-percent" value="30" min="0" max="10000" step="0.01">
+                        </div>
+                    </div>
+                    <p class="form-hint">振幅不要求先后顺序；涨要求低点在高点前，跌要求高点在低点前，仅使用本地已同步日线数据。</p>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary" id="ranking-query-btn">查询排行</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2 class="card-title">区间涨幅排行结果</h2>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>排名</th>
+                                <th>股票代码</th>
+                                <th>名称</th>
+                                <th>最低价</th>
+                                <th>最低价日期</th>
+                                <th>最高价</th>
+                                <th>最高价日期</th>
+                                <th>涨跌幅</th>
+                                <th>交易日数</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ranking-results-tbody">
+                            <tr>
+                                <td colspan="9" class="empty-state">暂无排行结果</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
     </main>
 
     <footer class="footer">
@@ -476,6 +542,6 @@
         </div>
     </footer>
 
-    <script src="static/js/app.js?v=20260418-no-scan-poll"></script>
+    <script src="static/js/app.js?v=20260419-ranking-radio"></script>
 </body>
 </html>

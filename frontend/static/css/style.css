@@ -160,6 +160,41 @@ body {
     margin-bottom: 4px;
 }
 
+.ranking-tabs {
+    display: flex;
+    border: 1px solid var(--primary-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.ranking-tabs input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.ranking-tab {
+    flex: 1;
+    padding: 10px 12px;
+    border: 0;
+    border-right: 1px solid var(--primary-color);
+    background: white;
+    color: var(--primary-color);
+    cursor: pointer;
+    font: inherit;
+    text-align: center;
+    user-select: none;
+}
+
+.ranking-tab:last-child {
+    border-right: 0;
+}
+
+.ranking-tabs input[type="radio"]:checked + .ranking-tab {
+    background: var(--primary-color);
+    color: white;
+}
+
 /* 按钮样式 */
 .btn {
     padding: 12px 24px;

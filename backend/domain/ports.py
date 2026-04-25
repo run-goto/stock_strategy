@@ -7,7 +7,16 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 
-from backend.domain.models import BacktestResultRecord, Job, ScanJob, Stock, StrategyHit, SyncResult, SyncSchedule
+from backend.domain.models import (
+    BacktestResultRecord,
+    HighLowGainRank,
+    Job,
+    ScanJob,
+    Stock,
+    StrategyHit,
+    SyncResult,
+    SyncSchedule,
+)
 
 
 class StockRepository(ABC):
@@ -103,6 +112,21 @@ class SyncScheduleRepository(ABC):
 
     @abstractmethod
     def save_sync_schedule(self, schedule: SyncSchedule) -> None:
+        ...
+
+
+class RankingRepository(ABC):
+    """Ranking query repository port."""
+
+    @abstractmethod
+    def list_high_low_gain_rank(
+        self,
+        start_date: str,
+        end_date: str,
+        limit: int = 100,
+        direction: str = "range",
+        min_gain_percent: float | None = None,
+    ) -> list[HighLowGainRank]:
         ...
 
 

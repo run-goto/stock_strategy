@@ -4,8 +4,8 @@ from typing import Iterable
 
 import pandas as pd
 
-from backend.domain.models import Stock, StrategyHit
-from backend.domain.ports import StockRepository
+from backend.domain.models import HighLowGainRank, Stock, StrategyHit
+from backend.domain.ports import RankingRepository, StockRepository
 from backend.infrastructure.persistence.duckdb.base import (
     DuckDBBase,
     add_column_if_missing,
@@ -19,7 +19,7 @@ from backend.infrastructure.persistence.duckdb.base import (
 )
 
 
-class DuckDBStockRepository(DuckDBBase, StockRepository):
+class DuckDBStockRepository(DuckDBBase, StockRepository, RankingRepository):
     """DuckDB stock data repository implementation."""
 
     def __init__(self, db_path: str = "stock_data.duckdb"):
@@ -246,6 +246,210 @@ class DuckDBStockRepository(DuckDBBase, StockRepository):
                 current_volume=row[5],
                 created_at=format_timestamp(row[6]),
                 job_id=row[7],
+            )
+            for row in rows
+        ]
+
+    def list_high_low_gain_rank(
+        self,
+        start_date: str,
+        end_date: str,
+        limit: int = 100,
+        direction: str = "range",
+        min_gain_percent: float | None = None,
+    ) -> list[HighLowGainRank]:
+        min_gain_rate = (min_gain_percent or 0) / 100
+        if direction == "range":
+            return self._list_range_high_low_gain_rank(start_date, end_date, limit, min_gain_rate)
+        if direction in {"up", "down"}:
+            return self._list_directional_high_low_gain_rank(start_date, end_date, limit, direction, min_gain_rate)
+        raise ValueError("direction must be one of range, up, down")
+
+    def _list_range_high_low_gain_rank(
+        self,
+        start_date: str,
+        end_date: str,
+        limit: int,
+        min_gain_rate: float,
+    ) -> list[HighLowGainRank]:
+        with self.connection() as conn:
+            rows = conn.execute(
+                """
+                WITH filtered AS (
+                    SELECT
+                        s.code,
+                        s.name,
+                        d.trade_date,
+                        d.high,
+                        d.low
+                    FROM stocks s
+                    JOIN stock_daily_data d ON d.code = s.code
+                    WHERE d.trade_date BETWEEN ? AND ?
+                      AND d.high IS NOT NULL
+                      AND d.low IS NOT NULL
+                      AND d.low > 0
+                ),
+                stats AS (
+                    SELECT
+                        code,
+                        name,
+                        MIN(low) AS lowest_price,
+                        MAX(high) AS highest_price,
+                        COUNT(*) AS trade_days
+                    FROM filtered
+                    GROUP BY code, name
+                ),
+                lowest_dates AS (
+                    SELECT code, trade_date AS lowest_date
+                    FROM (
+                        SELECT
+                            code,
+                            trade_date,
+                            ROW_NUMBER() OVER (PARTITION BY code ORDER BY low ASC, trade_date ASC) AS rn
+                        FROM filtered
+                    )
+                    WHERE rn = 1
+                ),
+                highest_dates AS (
+                    SELECT code, trade_date AS highest_date
+                    FROM (
+                        SELECT
+                            code,
+                            trade_date,
+                            ROW_NUMBER() OVER (PARTITION BY code ORDER BY high DESC, trade_date ASC) AS rn
+                        FROM filtered
+                    )
+                    WHERE rn = 1
+                )
+                SELECT
+                    stats.code,
+                    stats.name,
+                    stats.lowest_price,
+                    lowest_dates.lowest_date,
+                    stats.highest_price,
+                    highest_dates.highest_date,
+                    (stats.highest_price - stats.lowest_price) / stats.lowest_price AS gain_rate,
+                    ((stats.highest_price - stats.lowest_price) / stats.lowest_price) * 100 AS gain_percent,
+                    stats.trade_days
+                FROM stats
+                JOIN lowest_dates ON lowest_dates.code = stats.code
+                JOIN highest_dates ON highest_dates.code = stats.code
+                WHERE stats.lowest_price > 0
+                  AND ((stats.highest_price - stats.lowest_price) / stats.lowest_price) >= ?
+                ORDER BY gain_rate DESC, stats.code
+                LIMIT ?
+                """,
+                (start_date, end_date, min_gain_rate, limit),
+            ).fetchall()
+
+        return self._rank_rows_to_models(rows, start_date, end_date)
+
+    def _list_directional_high_low_gain_rank(
+        self,
+        start_date: str,
+        end_date: str,
+        limit: int,
+        direction: str,
+        min_gain_rate: float,
+    ) -> list[HighLowGainRank]:
+        if direction == "up":
+            select_prices = """
+                first_point.low AS lowest_price,
+                first_point.trade_date AS lowest_date,
+                second_point.high AS highest_price,
+                second_point.trade_date AS highest_date,
+                (second_point.high - first_point.low) / first_point.low AS gain_rate,
+                ((second_point.high - first_point.low) / first_point.low) * 100 AS gain_percent
+            """
+        else:
+            select_prices = """
+                second_point.low AS lowest_price,
+                second_point.trade_date AS lowest_date,
+                first_point.high AS highest_price,
+                first_point.trade_date AS highest_date,
+                (first_point.high - second_point.low) / first_point.high AS gain_rate,
+                ((first_point.high - second_point.low) / first_point.high) * 100 AS gain_percent
+            """
+
+        with self.connection() as conn:
+            rows = conn.execute(
+                f"""
+                WITH filtered AS (
+                    SELECT
+                        s.code,
+                        s.name,
+                        d.trade_date,
+                        d.high,
+                        d.low
+                    FROM stocks s
+                    JOIN stock_daily_data d ON d.code = s.code
+                    WHERE d.trade_date BETWEEN ? AND ?
+                      AND d.high IS NOT NULL
+                      AND d.low IS NOT NULL
+                      AND d.high > 0
+                      AND d.low > 0
+                ),
+                trade_day_stats AS (
+                    SELECT code, COUNT(*) AS trade_days
+                    FROM filtered
+                    GROUP BY code
+                ),
+                candidates AS (
+                    SELECT
+                        first_point.code,
+                        first_point.name,
+                        {select_prices},
+                        trade_day_stats.trade_days
+                    FROM filtered first_point
+                    JOIN filtered second_point
+                      ON second_point.code = first_point.code
+                     AND first_point.trade_date < second_point.trade_date
+                    JOIN trade_day_stats ON trade_day_stats.code = first_point.code
+                ),
+                ranked AS (
+                    SELECT
+                        *,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY code
+                            ORDER BY gain_rate DESC, lowest_date ASC, highest_date ASC
+                        ) AS rn
+                    FROM candidates
+                    WHERE gain_rate >= ?
+                )
+                SELECT
+                    code,
+                    name,
+                    lowest_price,
+                    lowest_date,
+                    highest_price,
+                    highest_date,
+                    gain_rate,
+                    gain_percent,
+                    trade_days
+                FROM ranked
+                WHERE rn = 1
+                ORDER BY gain_rate DESC, code
+                LIMIT ?
+                """,
+                (start_date, end_date, min_gain_rate, limit),
+            ).fetchall()
+
+        return self._rank_rows_to_models(rows, start_date, end_date)
+
+    def _rank_rows_to_models(self, rows, start_date: str, end_date: str) -> list[HighLowGainRank]:
+        return [
+            HighLowGainRank(
+                code=row[0],
+                name=row[1],
+                start=start_date,
+                end=end_date,
+                lowest_price=float(row[2]),
+                lowest_date=row[3],
+                highest_price=float(row[4]),
+                highest_date=row[5],
+                gain_rate=float(row[6]),
+                gain_percent=float(row[7]),
+                trade_days=int(row[8]),
             )
             for row in rows
         ]

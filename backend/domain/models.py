@@ -35,6 +35,38 @@ class DailyBar:
 
 
 @dataclass(frozen=True)
+class HighLowGainRank:
+    """High-low gain ranking for one stock in a date range."""
+
+    code: str
+    name: str
+    start: str
+    end: str
+    lowest_price: float
+    lowest_date: str
+    highest_price: float
+    highest_date: str
+    gain_rate: float
+    gain_percent: float
+    trade_days: int
+
+    def to_dict(self) -> dict:
+        return {
+            "code": self.code,
+            "name": self.name,
+            "start": self.start,
+            "end": self.end,
+            "lowest_price": self.lowest_price,
+            "lowest_date": self.lowest_date,
+            "highest_price": self.highest_price,
+            "highest_date": self.highest_date,
+            "gain_rate": self.gain_rate,
+            "gain_percent": self.gain_percent,
+            "trade_days": self.trade_days,
+        }
+
+
+@dataclass(frozen=True)
 class StrategyHit:
     """策略命中结果。"""
 
